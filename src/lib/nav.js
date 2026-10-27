@@ -1,0 +1,1 @@
+export const NAV = [['Accueil', '#top'], ['Nos solutions', '#solutions'], ['Éducation financière', '#education'], ['Nos projets', '#projets'], ['À propos', '#apropos'], ['Témoignages', '#temoignages'], ['FAQ', '#faq'], ['Contact', '#contact']];
