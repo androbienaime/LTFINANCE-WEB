@@ -1,15 +1,21 @@
-import { login } from '../lib/api';
+import { login, errorMessage } from '../lib/api';
 import { useState } from 'react';
 import { I, Arrow } from '../lib/icons';
+import { useNavigate, Link } from 'react-router-dom';
 
 export default function Login() {
-  const [id, setId] = useState(''), [pw, setPw] = useState(''), [show, setShow] = useState(false), [busy, setBusy] = useState(false), [sh, setSh] = useState(false), [st, setSt] = useState({});
+  const [id, setId] = useState(''), [pw, setPw] = useState(''), [remember, setRemember] = useState(false), [show, setShow] = useState(false), [busy, setBusy] = useState(false), [sh, setSh] = useState(false), [st, setSt] = useState({});
   const bad = t => { setSt({ k: 'err', t }); setSh(true); setTimeout(() => setSh(false), 450); };
+
+  const navigate = useNavigate();
+
   async function go(e) {
     e.preventDefault();
     if (!id.trim() || !pw) return bad('Renseignez votre identifiant et votre mot de passe.');
     setBusy(true); setSt({});
-    try { await login(id, pw); setSt({ k: 'ok', t: 'Connexion réussie. Redirection vers votre espace…' }); } catch (x) { bad(x.message); }
+   try { await login(id.trim(), pw, remember); navigate('/espace'); } catch (x) { bad(errorMessage(x)); }
+// // dans la carte « Vous êtes connecté », remplacez le <a href="#top"> par :
+// <Link className="btn b1" to="/espace">Accéder à mon espace <Arrow /></Link>
     setBusy(false);
   }
   return (
@@ -20,7 +26,8 @@ export default function Login() {
           <div className="fld"><label htmlFor="lid">Identifiant ou adresse e-mail</label><input id="lid" autoComplete="username" placeholder="Votre identifiant" value={id} onChange={e => setId(e.target.value)} /></div>
           <div className="fld"><label htmlFor="lpw">Mot de passe</label><input id="lpw" type={show ? 'text' : 'password'} autoComplete="current-password" placeholder="••••••••••" value={pw} onChange={e => setPw(e.target.value)} />
             <button type="button" className="eye" onClick={() => setShow(!show)} aria-label={show ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}><I n="eye" s={18} /></button></div>
-          <div className="opts"><label className="chk"><input type="checkbox" />Se souvenir de moi</label><a href="#connexion">Mot de passe oublié ?</a></div>
+          <div className="opts"><label className="chk"><input  type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />Se souvenir de moi</label><a href="#connexion">Mot de passe oublié ?</a></div>
+          <Link to="/activation" className="actlink">Activer mon accès en ligne</Link>
         </div>
         <div className="acts">
           <button className="btn b1" disabled={busy}>{busy ? <span className="spin" /> : <>Se connecter <Arrow /></>}</button>
