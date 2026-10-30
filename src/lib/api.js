@@ -1,23 +1,20 @@
-// src/lib/api.js
 /**
  * Client API LT Finance → Laravel.
  * - Mode démo : si VITE_API_URL est vide, les appels sont simulés (aucun réseau).
- * - Auth : jeton « Bearer » en sessionStorage (ou localStorage si « Se souvenir de moi »).
+ * - Auth : jeton « Bearer » stocké en sessionStorage (ou localStorage si « Se souvenir de moi »).
  */
-const RAW = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '');
-const BASE = RAW && !/^https?:\/\//i.test(RAW) ? `http://${RAW}` : RAW; // ajoute http:// si oublié
-
+const BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const PATHS = {
   login: import.meta.env.VITE_LOGIN_PATH || '/customer/login',
-  activate: import.meta.env.VITE_ACTIVATE_PATH || '/customer/activate',
   contact: import.meta.env.VITE_CONTACT_PATH || '/public/contact',
   newsletter: import.meta.env.VITE_NEWSLETTER_PATH || '/public/newsletter',
+  activate: import.meta.env.VITE_ACTIVATE_PATH || '/customer/activate',
 };
 const TOKEN_KEY = 'ltf_token';
+const USER_KEY = 'ltf_user';
 const DEVICE_NAME = 'ltfinance-web';
 
 if (import.meta.env.DEV) console.info('[API] base =', BASE || '(vide : mode démo)');
-
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const notify = () => window.dispatchEvent(new Event('ltf-auth'));
 
@@ -35,11 +32,24 @@ export const errorMessage = (e) => {
   return first || e?.message || 'Une erreur est survenue. Réessayez.';
 };
 
-export const getToken = () => sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
-const clearStorage = () => { sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); };
-export const setToken = (token, remember = false) => {
+const EXP_KEY = 'ltf_exp';
+const clearStorage = () => { for (const st of [sessionStorage, localStorage]) [TOKEN_KEY, USER_KEY, EXP_KEY].forEach((k) => st.removeItem(k)); };
+const holder = () => (sessionStorage.getItem(TOKEN_KEY) ? sessionStorage : localStorage.getItem(TOKEN_KEY) ? localStorage : null);
+
+export const getToken = () => {
+  const s = holder();
+  if (!s) return null;
+  const exp = Date.parse(s.getItem(EXP_KEY)); // expires_at renvoyé par l'API
+  if (exp && Date.now() > exp) { clearStorage(); return null; } // session expirée
+  return s.getItem(TOKEN_KEY);
+};
+export const getUser = () => { try { return JSON.parse(holder()?.getItem(USER_KEY)); } catch { return null; } };
+export const setToken = (token, remember = false, { expiresAt, user } = {}) => {
   clearStorage();
-  (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
+  const s = remember ? localStorage : sessionStorage;
+  s.setItem(TOKEN_KEY, token);
+  if (expiresAt) s.setItem(EXP_KEY, expiresAt);
+  if (user) s.setItem(USER_KEY, JSON.stringify(user));
   notify();
 };
 export const clearToken = () => { clearStorage(); notify(); };
@@ -61,10 +71,11 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
   }
   const raw = await res.text();
   let data = null;
-  try { data = JSON.parse(raw); } catch { /* réponse HTML ou vide */ }
+  try { data = JSON.parse(raw); } catch { /* réponse sans JSON (page HTML d'erreur, par ex.) */ }
 
   if (!res.ok) {
     if (import.meta.env.DEV) {
+      // Diagnostic visible dans la console du navigateur (F12 > Console)
       console.error(`[API] ${method} ${BASE + path} → HTTP ${res.status}`, data ?? raw.slice(0, 600));
     }
     if (res.status === 401 && auth) clearToken(); // jeton expiré ou invalide
@@ -80,18 +91,23 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
   return data;
 }
 
-/** Même logique que le script Postman : le jeton est dans data.reference (ou reference). */
-const extractToken = (d) =>
-  d?.data?.token ?? d?.token ?? d?.data?.access_token ?? d?.access_token ?? d?.data?.reference ?? d?.reference ?? null;
+/** Réponse de connexion : { token, expires_at, customer: { id, name } } */
+const extractToken = (d) => d?.token ?? d?.data?.token ?? d?.access_token ?? d?.data?.access_token ?? d?.data?.reference ?? d?.reference ?? null;
+
+function saveSession(data, remember = false) {
+  const token = data?.demo ? 'demo' : extractToken(data);
+  if (!token) return false;
+  const user = data?.customer ?? data?.data?.customer ?? data?.user ?? data?.data?.user;
+  setToken(token, remember, { expiresAt: data?.expires_at ?? data?.data?.expires_at, user });
+  return true;
+}
 
 export async function login(identifier, password, remember = false) {
   const data = await request(PATHS.login, {
     method: 'POST',
     body: { identifier, password, device_name: DEVICE_NAME },
   });
-  const token = data?.demo ? 'demo' : extractToken(data);
-  if (!token) throw new ApiError('Réponse inattendue du serveur : jeton introuvable.', 200);
-  setToken(token, remember);
+  if (!saveSession(data, remember)) throw new ApiError('Réponse inattendue du serveur : jeton introuvable.', 200);
   return data;
 }
 
@@ -100,15 +116,13 @@ export async function activate({ activation_code, identifier, password }) {
     method: 'POST',
     body: { activation_code, identifier, password },
   });
-  const token = data?.demo ? 'demo' : extractToken(data);
-  if (token) setToken(token);                 // si l'API renvoie déjà un jeton
-  else await login(identifier, password);     // sinon, connexion automatique
+  if (!saveSession(data)) await login(identifier, password); // si l'API ne renvoie pas déjà un jeton
   return data;
 }
 
 export const logout = () => clearToken();
 
-/** Appels authentifiés : get('/customer/accounts') */
+/** Appels authentifiés : api.get('/customer/accounts') */
 export const get = (path) => request(path, { auth: true });
 export const post = (path, body) => request(path, { method: 'POST', body, auth: true });
 

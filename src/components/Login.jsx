@@ -1,23 +1,37 @@
-import { login, errorMessage } from '../lib/api';
 import { useState } from 'react';
 import { I, Arrow } from '../lib/icons';
 import { useNavigate, Link } from 'react-router-dom';
+import { login, errorMessage, getUser } from '../lib/api';
+import useAuth from '../lib/useAuth';
 
 export default function Login() {
   const [id, setId] = useState(''), [pw, setPw] = useState(''), [remember, setRemember] = useState(false), [show, setShow] = useState(false), [busy, setBusy] = useState(false), [sh, setSh] = useState(false), [st, setSt] = useState({});
   const bad = t => { setSt({ k: 'err', t }); setSh(true); setTimeout(() => setSh(false), 450); };
 
   const navigate = useNavigate();
+  const { authed } = useAuth();
+  const u = getUser();
+  const name = u?.full_name ?? u?.name ?? [u?.first_name, u?.last_name].filter(Boolean).join(' ');
 
   async function go(e) {
     e.preventDefault();
     if (!id.trim() || !pw) return bad('Renseignez votre identifiant et votre mot de passe.');
     setBusy(true); setSt({});
    try { await login(id.trim(), pw, remember); navigate('/espace'); } catch (x) { bad(errorMessage(x)); }
-// // dans la carte « Vous êtes connecté », remplacez le <a href="#top"> par :
-// <Link className="btn b1" to="/espace">Accéder à mon espace <Arrow /></Link>
     setBusy(false);
   }
+
+  if (authed) return (
+    <div className="cx in" style={{ '--d': 5 }} id="connexion">
+      <div className="card">
+        <div className="ct"><div><h2>{name ? `Bonjour, ${name}` : 'Vous êtes connecté'}</h2><p className="sub">Accédez à votre compte LT Finance.</p></div><span style={{ color: '#1045c8' }}><I n="user" s={24} /></span></div>
+        <div className="acts">
+          <Link className="btn b1" to="/espace">Accéder à mon espace <Arrow /></Link>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="cx in" style={{ '--d': 5 }} id="connexion">
       <form className={'card' + (sh ? ' shake' : '')} onSubmit={go} noValidate>

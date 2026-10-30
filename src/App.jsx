@@ -16,10 +16,13 @@ import { Routes, Route } from 'react-router-dom';
 import Activate from './pages/Activate';
 import Espace from './pages/Espace';
 import RequireAuth from './components/RequireAuth';
+import useTheme from './lib/useTheme';
+import { get, getToken } from './lib/api';
 
 export function Home() {
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const { theme, setTheme } = useTheme();
+  useEffect(() => { if (getToken()) get('/customer/accounts').catch(() => {}); }, []);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   useReveal();
   return (<><Header theme={theme} setTheme={setTheme} onMenu={() => setOpen(true)} /><Menu open={open} onClose={() => setOpen(false)} />

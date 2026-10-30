@@ -2,9 +2,13 @@ import { useState, useEffect, useRef } from 'react';
 import { I } from '../lib/icons';
 import Brand from './Brand';
 import { NAV } from '../lib/nav';
+import { Link } from 'react-router-dom';
+import useAuth from '../lib/useAuth';
 
 export default function Header({ theme, setTheme, onMenu }) {
   const [sc, setSc] = useState(false), [act, setAct] = useState('#top'), [lang, setLang] = useState('FR'), bar = useRef(null);
+  const { authed, logout } = useAuth();
+  
   useEffect(() => {
     const f = () => {
       setSc(scrollY > 20);
@@ -26,8 +30,17 @@ export default function Header({ theme, setTheme, onMenu }) {
             <button className={theme === 'light' ? 'on' : ''} onClick={() => setTheme('light')} aria-label="Thème clair"><I n="sun" /></button>
             <button className={theme === 'dark' ? 'on' : ''} onClick={() => setTheme('dark')} aria-label="Thème sombre"><I n="moon" /></button>
           </div>
-          <a className="btn b1 sm" href="#connexion">Ouvrir un compte</a>
-          <a className="btn b2 sm" href="#connexion">Se connecter</a>
+         {authed ? (
+            <>
+              <Link className="btn b1 sm" to="/espace">Mon espace</Link>
+              <button className="btn b2 sm" onClick={logout}>Se déconnecter</button>
+            </>
+          ) : (
+            <>
+              <a className="btn b1 sm" href="#connexion">Ouvrir un compte</a>
+              <a className="btn b2 sm" href="#connexion">Se connecter</a>
+            </>
+          )}
         </div>
         <button className="burger" onClick={onMenu} aria-label="Ouvrir le menu"><I n="menu" /></button>
       </div>
