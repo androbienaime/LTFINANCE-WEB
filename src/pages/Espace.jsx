@@ -179,7 +179,7 @@ export default function Espace() {
   const history = accounts?.filter((a) => !a.active) ?? [];
   const totals = useMemo(() => {
     const m = {};
-    actives.forEach((a) => { m[a.currency] = (m[a.currency] || 0) + a.balance; });
+    actives.forEach((a) => { m[a.iso] = (m[a.iso] || 0) + a.balance; });   // a.iso au lieu de a.currency
     return Object.entries(m);
   }, [accounts]);
   const total = totals.length ? totals.map(([c, v]) => `${hide ? '••••••' : money(v)} ${c}`).join(' + ') : '0 HTG';
