@@ -111,7 +111,6 @@ export default function Espace() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const user = useMemo(() => normUser(getUser()), []);
-  console.log("ME li : " + JSON.stringify(user));
   const [view, setView] = useState('home');
   const [accounts, setAccounts] = useState(null), [tx, setTx] = useState(null), [err, setErr] = useState('');
   const [hide, setHide] = useState(false), [menu, setMenu] = useState(false), [note, setNote] = useState('');

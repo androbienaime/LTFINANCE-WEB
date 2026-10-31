@@ -18,6 +18,7 @@ import Espace from './pages/Espace';
 import RequireAuth from './components/RequireAuth';
 import useTheme from './lib/useTheme';
 import { get, getToken } from './lib/api';
+import SessionGuard from './components/SessionGuard';
 
 export function Home() {
   const [open, setOpen] = useState(false);
@@ -33,11 +34,15 @@ export function Home() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/activation" element={<Activate />} />
-      <Route path="/espace" element={<RequireAuth><Espace /></RequireAuth>} />
-      <Route path="*" element={<Home />} />
-    </Routes>
+    <>
+      <SessionGuard />
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/activation" element={<Activate />} />
+        <Route path="/espace" element={<RequireAuth><Espace /></RequireAuth>} />
+        <Route path="*" element={<Home />} />
+      </Routes>
+    </>
   );
 }

@@ -3,12 +3,14 @@
  * - Mode démo : si VITE_API_URL est vide, les appels sont simulés (aucun réseau).
  * - Auth : jeton « Bearer » stocké en sessionStorage (ou localStorage si « Se souvenir de moi »).
  */
+import { logoutMessage } from './session-policy';
+
 const BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const PATHS = {
   login: import.meta.env.VITE_LOGIN_PATH || '/customer/login',
   contact: import.meta.env.VITE_CONTACT_PATH || '/public/contact',
   newsletter: import.meta.env.VITE_NEWSLETTER_PATH || '/public/newsletter',
-  activate: import.meta.env.VITE_ACTIVATE_PATH || '/customer/activate',
+  logout: import.meta.env.VITE_LOGOUT_PATH || '/customer/logout',
 };
 const TOKEN_KEY = 'ltf_token';
 const USER_KEY = 'ltf_user';
@@ -40,12 +42,13 @@ export const getToken = () => {
   const s = holder();
   if (!s) return null;
   const exp = Date.parse(s.getItem(EXP_KEY)); // expires_at renvoyé par l'API
-  if (exp && Date.now() > exp) { clearStorage(); return null; } // session expirée
+  if (exp && Date.now() > exp) { clearStorage(); setNotice(logoutMessage('expired')); return null; } // session expirée
   return s.getItem(TOKEN_KEY);
 };
 export const getUser = () => { try { return JSON.parse(holder()?.getItem(USER_KEY)); } catch { return null; } };
 export const setToken = (token, remember = false, { expiresAt, user } = {}) => {
   clearStorage();
+  clearNotice();
   const s = remember ? localStorage : sessionStorage;
   s.setItem(TOKEN_KEY, token);
   if (expiresAt) s.setItem(EXP_KEY, expiresAt);
@@ -53,6 +56,26 @@ export const setToken = (token, remember = false, { expiresAt, user } = {}) => {
   notify();
 };
 export const clearToken = () => { clearStorage(); notify(); };
+
+/* ---------- Déconnexion automatique (voir SessionGuard et session-policy) ---------- */
+const NOTICE_KEY = 'ltf_notice';
+const ACTIVITY_KEY = 'ltf_activity';
+
+/** Message affiché sur la carte de connexion après une déconnexion automatique. */
+export const setNotice = (msg) => { try { sessionStorage.setItem(NOTICE_KEY, msg); } catch { /* ignoré */ } };
+export const getNotice = () => { try { return sessionStorage.getItem(NOTICE_KEY) || ''; } catch { return ''; } };
+export const clearNotice = () => { try { sessionStorage.removeItem(NOTICE_KEY); } catch { /* ignoré */ } };
+
+/** Dernière activité (ms), partagée entre les onglets : l'activité dans un onglet empêche la déconnexion des autres. */
+export const markActivity = (t = Date.now()) => { try { localStorage.setItem(ACTIVITY_KEY, String(t)); } catch { /* ignoré */ } };
+export const sharedActivity = () => { try { return Number(localStorage.getItem(ACTIVITY_KEY)) || 0; } catch { return 0; } };
+
+/** Date d'expiration du jeton (ms) ou null (expires_at renvoyé par l'API). */
+export const getExpiry = () => {
+  const s = holder();
+  const e = s ? Date.parse(s.getItem(EXP_KEY)) : NaN;
+  return Number.isNaN(e) ? null : e;
+};
 
 async function request(path, { method = 'GET', body, auth = false } = {}) {
   if (!BASE) {
@@ -78,7 +101,7 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
       // Diagnostic visible dans la console du navigateur (F12 > Console)
       console.error(`[API] ${method} ${BASE + path} → HTTP ${res.status}`, data ?? raw.slice(0, 600));
     }
-    if (res.status === 401 && auth) clearToken(); // jeton expiré ou invalide
+    if (res.status === 401 && auth) { if (getToken()) setNotice(logoutMessage('unauthorized')); clearToken(); } // jeton expiré ou révoqué
     const fallback = {
       401: 'Identifiant ou mot de passe incorrect.',
       403: 'Accès refusé.',
@@ -120,7 +143,18 @@ export async function activate({ activation_code, identifier, password }) {
   return data;
 }
 
-export const logout = () => clearToken();
+/** Déconnexion voulue : révoque le jeton côté serveur (sans attendre), puis efface la session. */
+export const logout = () => {
+  if (getToken()) post(PATHS.logout).catch(() => {});
+  clearToken();
+};
+
+/** Déconnexion automatique (inactivité, onglet masqué, expiration) : même chose + message sur l'écran de connexion. */
+export function autoLogout(reason, policy) {
+  if ((reason === 'idle' || reason === 'hidden') && getToken()) post(PATHS.logout).catch(() => {});
+  setNotice(logoutMessage(reason, policy)); // policy : pour afficher la vraie durée (appareil de confiance…)
+  clearToken();
+}
 
 /** Appels authentifiés : api.get('/customer/accounts') */
 export const get = (path) => request(path, { auth: true });

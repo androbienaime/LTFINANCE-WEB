@@ -1,0 +1,11 @@
+/* Avertissement avant déconnexion automatique */
+.sg-back{position:fixed;inset:0;z-index:200;background:rgba(5,15,43,.6);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px}
+.sg{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:28px;max-width:420px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.35);display:grid;gap:12px;animation:up .3s forwards}
+.sg h2{font-size:22px;margin:0;letter-spacing:-.5px}
+.sg p{margin:0;color:var(--muted);line-height:1.6}
+.sg b{color:var(--text)}
+.sg-acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.sg-acts .btn{flex:1;min-width:150px}
+.sg-bar{height:6px;border-radius:4px;background:var(--chip);overflow:hidden}
+.sg-bar i{display:block;height:100%;background:#ef4444;border-radius:4px;transition:width 1s linear}
+@media (prefers-reduced-motion:reduce){.sg-bar i{transition:none}}

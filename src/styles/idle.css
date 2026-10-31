@@ -1,0 +1,14 @@
+.idle-ov {
+  position: fixed; inset: 0; z-index: 1000;
+  display: grid; place-items: center; padding: 16px;
+  background: rgba(10, 20, 40, .55);
+}
+.idle-box {
+  width: min(420px, 100%); padding: 24px; border-radius: 16px;
+  background: var(--card, #fff); color: var(--text, #111);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .3); text-align: center;
+}
+.idle-box h3 { margin: 0 0 8px; }
+.idle-box p { margin: 0 0 20px; line-height: 1.5; }
+.idle-box b { font-variant-numeric: tabular-nums; }
+.idle-act { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }

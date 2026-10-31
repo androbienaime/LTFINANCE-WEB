@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { I, Arrow } from '../lib/icons';
 import { useNavigate, Link } from 'react-router-dom';
-import { login, errorMessage, getUser } from '../lib/api';
+import { login, errorMessage, getUser, getNotice } from '../lib/api';
 import useAuth from '../lib/useAuth';
 
 export default function Login() {
@@ -32,9 +32,12 @@ export default function Login() {
     </div>
   );
 
+  const notice = authed ? '' : getNotice();
+
   return (
     <div className="cx in" style={{ '--d': 5 }} id="connexion">
       <form className={'card' + (sh ? ' shake' : '')} onSubmit={go} noValidate>
+        {notice && <div className="msg" role="status" style={{ background: '#fef3c7', color: '#92400e', borderRadius: 10, padding: '10px 14px' }}>{notice}</div>}
         <div className="ct"><div><h2>Espace client</h2><p className="sub">Accédez à votre compte LT Finance.</p></div><span style={{ color: '#1045c8' }}><I n="user" s={24} /></span></div>
         <div className="flds">
           <div className="fld"><label htmlFor="lid">Identifiant ou adresse e-mail</label><input id="lid" autoComplete="username" placeholder="Votre identifiant" value={id} onChange={e => setId(e.target.value)} /></div>
